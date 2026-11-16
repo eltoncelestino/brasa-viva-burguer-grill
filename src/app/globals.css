@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand: #ea580c;
+  --color-brand-dark: #c2410c;
+  --color-brand-light: #ffedd5;
+  --color-ember: #dc2626;
+  --color-charcoal: #18181b;
+  --color-surface: #ffffff;
+  --color-muted: #f4f4f5;
+  --font-sans: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono-code), ui-monospace, SFMono-Regular, monospace;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: #fafafa;
+    color: #18181b;
+    font-family: var(--font-sans);
+  }
+}
+
+/* Utilitário para esconder scrollbar mantendo scroll horizontal fluido */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Estilos dedicados para impressão térmica de 80mm */
+@media print {
+  @page {
+    size: 80mm auto;
+    margin: 2mm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .thermal-receipt {
+    width: 76mm !important;
+    max-width: 76mm !important;
+    margin: 0 auto !important;
+    padding: 2mm 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+    font-family: "Courier New", Courier, monospace !important;
+    font-size: 11px !important;
+    line-height: 1.35 !important;
+    color: #000000 !important;
+  }
+}

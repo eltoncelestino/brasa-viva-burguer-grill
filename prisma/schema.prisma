@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  OWNER
+  MANAGER
+  KITCHEN
+}
+
+enum OrderType {
+  DINE_IN
+  TAKEOUT
+  DELIVERY
+}
+
+enum OrderStatus {
+  NEW
+  PREPARING
+  READY
+  FINISHED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  PIX
+  CARD_ON_DELIVERY
+  CASH
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  EXPIRED
+  FAILED
+  REFUNDED
+}
+
+model Restaurant {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  phone       String
+  address     String
+  city        String   @default("Fortaleza")
+  state       String   @default("CE")
+  logoUrl     String?
+  bannerUrl   String?
+  isOpen      Boolean  @default(true)
+  openingInfo String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users         User[]
+  categories    Category[]
+  products      Product[]
+  addonGroups   AddonGroup[]
+  tables        Table[]
+  deliveryZones DeliveryZone[]
+  orders        Order[]
+
+  @@index([slug])
+}
+
+model User {
+  id           String     @id @default(cuid())
+  name         String
+  email        String     @unique
+  passwordHash String
+  role         UserRole   @default(MANAGER)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([restaurantId])
+}
+
+model Category {
+  id           String     @id @default(cuid())
+  name         String
+  description  String?
+  sortOrder    Int        @default(0)
+  isActive     Boolean    @default(true)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  products     Product[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([restaurantId, sortOrder])
+}
+
+model Product {
+  id           String     @id @default(cuid())
+  name         String
+  description  String?
+  priceCents   Int
+  imageUrl     String?
+  imageQuery   String?
+  badges       String     @default("[]")
+  isAvailable  Boolean    @default(true)
+  sortOrder    Int        @default(0)
+  categoryId   String
+  category     Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  variants    ProductVariant[]
+  addonGroups AddonGroup[]
+  orderItems  OrderItem[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([restaurantId, categoryId])
+}
+
+model ProductVariant {
+  id         String  @id @default(cuid())
+  name       String
+  priceCents Int     @default(0)
+  isDefault  Boolean @default(false)
+  sortOrder  Int     @default(0)
+  productId  String
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  orderItems OrderItem[]
+
+  @@index([productId])
+}
+
+model AddonGroup {
+  id           String        @id @default(cuid())
+  name         String
+  minSelect    Int           @default(0)
+  maxSelect    Int           @default(3)
+  isRequired   Boolean       @default(false)
+  sortOrder    Int           @default(0)
+  restaurantId String
+  restaurant   Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  products     Product[]
+  options      AddonOption[]
+
+  @@index([restaurantId])
+}
+
+model AddonOption {
+  id           String     @id @default(cuid())
+  name         String
+  priceCents   Int
+  isAvailable  Boolean    @default(true)
+  sortOrder    Int        @default(0)
+  addonGroupId String
+  addonGroup   AddonGroup @relation(fields: [addonGroupId], references: [id], onDelete: Cascade)
+
+  orderItemAddons OrderItemAddon[]
+
+  @@index([addonGroupId])
+}
+
+model Table {
+  id           String     @id @default(cuid())
+  number       Int
+  label        String?
+  seats        Int        @default(4)
+  isActive     Boolean    @default(true)
+  restaurantId String
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  orders       Order[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([restaurantId, number])
+}
+
+model DeliveryZone {
+  id               String     @id @default(cuid())
+  neighborhood     String
+  feeCents         Int
+  estimatedMinutes Int
+  isActive         Boolean    @default(true)
+  restaurantId     String
+  restaurant       Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  orders           Order[]
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@unique([restaurantId, neighborhood])
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  orderNumber     Int
+  type            OrderType
+  status          OrderStatus   @default(NEW)
+  customerName    String
+  customerPhone   String
+  deliveryAddress String?
+  notes           String?
+  subtotalCents   Int
+  deliveryFeeCents Int          @default(0)
+  totalCents      Int
+  restaurantId    String
+  restaurant      Restaurant    @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  tableId         String?
+  table           Table?        @relation(fields: [tableId], references: [id], onDelete: SetNull)
+  deliveryZoneId  String?
+  deliveryZone    DeliveryZone? @relation(fields: [deliveryZoneId], references: [id], onDelete: SetNull)
+  items           OrderItem[]
+  payment         Payment?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([restaurantId, status])
+  @@index([restaurantId, createdAt])
+}
+
+model OrderItem {
+  id               String           @id @default(cuid())
+  orderId          String
+  order            Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId        String
+  product          Product          @relation(fields: [productId], references: [id], onDelete: Restrict)
+  productName      String
+  variantId        String?
+  variant          ProductVariant?  @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  variantName      String?
+  quantity         Int
+  unitPriceCents   Int
+  totalPriceCents  Int
+  notes            String?
+  addons           OrderItemAddon[]
+
+  @@index([orderId])
+}
+
+model OrderItemAddon {
+  id            String      @id @default(cuid())
+  orderItemId   String
+  orderItem     OrderItem   @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  addonOptionId String
+  addonOption   AddonOption @relation(fields: [addonOptionId], references: [id], onDelete: Restrict)
+  addonName     String
+  priceCents    Int
+
+  @@index([orderItemId])
+}
+
+model Payment {
+  id            String        @id @default(cuid())
+  orderId       String        @unique
+  order         Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  method        PaymentMethod @default(PIX)
+  status        PaymentStatus @default(PENDING)
+  amountCents   Int
+  provider      String        @default("mock")
+  externalId    String?       @unique
+  pixQrCode     String?
+  pixCopyPaste  String?
+  expiresAt     DateTime?
+  paidAt        DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
